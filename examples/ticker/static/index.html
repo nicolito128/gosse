@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Ticker Page</title>
+</head>
+
+<body>
+    <h1>Server-Sent Events using a Ticker of 1s</h1>
+    <div id="status">Disconnected</div>
+
+    <div>
+        <table border=1>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Message Time</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const src = new EventSource("/events")
+        const ticks = []
+        const statusNode = document.querySelector("#status")
+        const tableBody = document.querySelector("#tableBody")
+        const logs = document.querySelector("#logs")
+
+        src.onopen = () => {
+            statusNode.textContent = "Connected"
+        }
+
+        src.addEventListener("tick-update", e => {
+            console.log("New tick: ", e)
+            const data = JSON.parse(e.data)
+            data.id = e.lastEventId
+            ticks.push(data)
+            drawTable()
+        })
+
+        src.onerror = () => {
+            statusNode.textContent = "Reconnecting..."
+        }
+
+        function drawTable() {
+            let body = ""
+            for (let i = ticks.length - 1; i >= 0; i--) {
+                let elem = ticks[i]
+                body += `<tr><td>${elem.id}</td> <td>${elem.time_now}</td></tr>`
+            }
+
+            tableBody.innerHTML = body
+        }
+    </script>
+</body>
+
+</html>
