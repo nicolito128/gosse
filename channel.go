@@ -27,8 +27,8 @@ func (c *Channel) Subscribe(w io.Writer) *SSEConn {
 
 func (c *Channel) Unsubscribe(conn *SSEConn) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	delete(c.conns, conn)
+	c.mu.Unlock()
 	conn.Close()
 }
 
@@ -55,17 +55,32 @@ func (c *Channel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn := c.Subscribe(w)
 	defer c.Unsubscribe(conn)
 
+	flusher.Flush()
+
 	for {
 		select {
-		case event := <-conn.Listen():
-			_, err := conn.WriteEvent(event)
-			if err != nil {
+		case event, ok := <-conn.Listen():
+			if !ok {
+				return // closed channel
+			}
+
+			if _, err := conn.WriteEvent(event); err != nil {
 				http.Error(w, "error trying to write an event", http.StatusInternalServerError)
 				return
 			}
+
 			flusher.Flush()
 		case <-r.Context().Done():
 			return
 		}
+	}
+}
+
+func (c *Channel) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for conn := range c.conns {
+		conn.Close()
+		delete(c.conns, conn)
 	}
 }
