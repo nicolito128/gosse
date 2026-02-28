@@ -1,100 +1,52 @@
-/*
-Package gosse ...
-*/
 package gosse
 
 import (
 	"fmt"
-	"net/http"
-	"sync"
+	"io"
 )
 
-// Event ...
-// https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#fields
-type Event struct {
-	ID    string `json:"id"`
-	Event string `json:"event"`
-	Data  string `json:"data"`
-	Retry int    `json:"retry"`
+type SSEConn struct {
+	io.Writer
+	ch     chan Event
+	closed bool
 }
 
-func (e Event) String() string {
-	var s string
-	if e.ID != "" {
-		s += fmt.Sprintf("id: %s\n", e.ID)
-	}
-
-	if e.Event != "" {
-		s += fmt.Sprintf("event: %s\n", e.Event)
-	}
-
-	if e.Retry > 0 {
-		s += fmt.Sprintf("retry: %d\n", e.Retry)
-	}
-
-	s += fmt.Sprintf("data: %s\n\n", e.Data)
-
-	return s
-}
-
-type Channel struct {
-	conns map[chan Event]struct{}
-	mu    sync.RWMutex
-}
-
-func NewChannel() *Channel {
-	return &Channel{
-		conns: make(map[chan Event]struct{}),
-	}
-}
-
-func (c *Channel) Subscribe() chan Event {
+func NewSSEConn(w io.Writer) *SSEConn {
 	ch := make(chan Event, 16)
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.conns[ch] = struct{}{}
-	return ch
-}
-
-func (c *Channel) Unsubscribe(ch chan Event) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.conns, ch)
-	close(ch)
-}
-
-func (c *Channel) Push(event Event) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for ch := range c.conns {
-		select {
-		case ch <- event:
-		default:
-		}
+	return &SSEConn{
+		Writer: w,
+		ch:     ch,
 	}
 }
 
-func (c *Channel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
+func (sc *SSEConn) ok() bool {
+	return sc.ch != nil && !sc.closed
+}
 
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "event streaming not supported", http.StatusInternalServerError)
-		return
+func (sc *SSEConn) WriteEvent(e Event) (n int, err error) {
+	if !sc.ok() {
+		return 0, fmt.Errorf("sse connection not started")
 	}
+	n, err = sc.Write([]byte(e.String()))
+	return
+}
 
-	ch := c.Subscribe()
-	defer c.Unsubscribe(ch)
-
-	for {
-		select {
-		case event := <-ch:
-			fmt.Fprint(w, event.String())
-			flusher.Flush()
-		case <-r.Context().Done():
-			return
-		}
+func (sc *SSEConn) Send(e Event) {
+	select {
+	case sc.ch <- e:
+	default:
 	}
+}
+
+func (sc *SSEConn) Listen() <-chan Event {
+	return sc.ch
+}
+
+func (sc *SSEConn) Close() error {
+	if !sc.ok() {
+		return fmt.Errorf("sse connection already closed")
+	}
+	close(sc.ch)
+	sc.closed = true
+	return nil
 }
