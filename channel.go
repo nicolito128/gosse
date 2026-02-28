@@ -1,6 +1,3 @@
-/*
-Package gosse ...
-*/
 package gosse
 
 import (
