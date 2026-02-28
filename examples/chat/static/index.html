@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Simple Chat using SSE</title>
+</head>
+
+<body>
+    <div>
+        <h1>Chatroom using SSE</h1>
+        <span id="connStatus">Disconnected</span>
+    </div>
+
+    <div>
+        <input type="text" id="author" , placeholder="Author's name">
+        <input type="text" id="msgbox" style="min-width: 300px;"> <button id="sendBtn">Send</button>
+    </div>
+
+    <div id="chatlog" style="width: 550px; border: 1px solid grey; padding: 5px; margin-top: 10px"></div>
+
+    <script>
+        const author = document.querySelector("#author")
+        const msgbox = document.querySelector("#msgbox")
+        const sendBtn = document.querySelector("#sendBtn")
+        const chatlog = document.querySelector("#chatlog")
+        const status = document.querySelector("#connStatus")
+
+        const src = new EventSource("http://localhost:8080/join-chatroom")
+
+        const messages = []
+
+        src.onopen = () => {
+            status.textContent = "Connected"
+        }
+
+        src.onerror = () => {
+            status.textContent = "Trying to reconnect..."
+        }
+
+        src.addEventListener("new-chatroom-message", e => {
+            console.log("New message event: ", e)
+            const data = JSON.parse(e.data)
+            let msg = `<div><b>${data.author}</b>: ${data.content}</div>`
+            messages.push(msg)
+            drawChatlog()
+        })
+
+        sendBtn.addEventListener("click", event => {
+            fetch("/publish", {
+                method: "POST",
+                type: "application/json",
+                body: JSON.stringify({
+                    author: author.value,
+                    content: msgbox.value,
+                })
+            })
+        })
+
+        function drawChatlog() {
+            let logs = ""
+            for (let i = messages.length - 1; i >= 0; i--) {
+                logs += messages[i]
+            }
+            chatlog.innerHTML = logs
+        }
+    </script>
+
+</body>
+
+</html>
