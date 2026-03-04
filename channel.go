@@ -76,11 +76,14 @@ func (c *Channel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *Channel) Close() {
+func (c *Channel) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for conn := range c.conns {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			return err
+		}
 		delete(c.conns, conn)
 	}
+	return nil
 }
