@@ -1,6 +1,7 @@
 package gosse
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -55,6 +56,7 @@ func (c *Channel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn := c.Subscribe(w)
 	defer c.Unsubscribe(conn)
 
+	fmt.Fprintf(w, ": ok\n\n")
 	flusher.Flush()
 
 	for {
