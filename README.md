@@ -37,7 +37,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request) {
 	defer c.Close()
 
 	msg := gosse.NewMessage([]byte("hello, goose!"), "greeting", 0)
-	c.Send([]byte(msg.String()))
+	c.Send(msg.Bytes())
 
 	<-c.Done()
 }
