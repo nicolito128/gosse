@@ -48,7 +48,7 @@ Connect with `curl -N http://localhost:8080/events` and you'll see:
 ```
 event: greeting
 retry: 3000
-data: hello, world!
+data: hello, goose!
 ```
 
 ## Links
