@@ -16,59 +16,53 @@ var (
 	addr = flag.String("addr", "http://localhost:8080", "server base address")
 )
 
+var clientID string
+
+// ANSI color codes
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorCyan   = "\033[36m"
+	colorGray   = "\033[90m"
+	colorBold   = "\033[1m"
+)
+
 func main() {
 	flag.Parse()
 
 	base := strings.TrimRight(*addr, "/")
 
-	clientID := make(chan string, 1)
+	go listen(base)
 
-	go listen(base, clientID)
-
-	id := <-clientID
-	fmt.Printf("connected as %s\n", id)
-	fmt.Println("type a message and press enter to send it, ctrl+c to quit")
-
-	send(base, id)
+	send(base)
 }
 
-func listen(base string, clientID chan<- string) {
+func listen(base string) {
 	resp, err := http.Get(base + "/events")
 	if err != nil {
-		log.Fatalf("connecting to %s/events: %v", base, err)
+		logErrorf("connecting to %s/events: %v", base, err)
+		os.Exit(1)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("unexpected status: %s", resp.Status)
+		logErrorf("unexpected status: %s", resp.Status)
+		os.Exit(1)
 	}
 
 	scanner := bufio.NewScanner(resp.Body)
 
 	var event, data string
-	first := true
-
-	flush := func() {
-		if event == "" && data == "" {
-			return
-		}
-
-		if event == "chat.id" && first {
-			clientID <- data
-			first = false
-		} else {
-			fmt.Printf("[%s] %s\n", event, data)
-		}
-
-		event, data = "", ""
-	}
 
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		switch {
 		case line == "":
-			flush()
+			flush(event, data)
+			event, data = "", ""
 
 		case strings.HasPrefix(line, "event: "):
 			event = strings.TrimPrefix(line, "event: ")
@@ -82,14 +76,15 @@ func listen(base string, clientID chan<- string) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatalf("reading event stream: %v", err)
+		logErrorf("reading event stream: %v", err)
+		os.Exit(1)
 	}
 
-	log.Println("connection closed by server")
+	logInfo("connection closed by server")
 	os.Exit(0)
 }
 
-func send(base, id string) {
+func send(base string) {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for scanner.Scan() {
@@ -98,17 +93,49 @@ func send(base, id string) {
 			continue
 		}
 
-		u := fmt.Sprintf("%s/chat/%s/%s", base, url.PathEscape(id), url.PathEscape(msg))
+		if clientID == "" {
+			logWarn("not connected yet, try again in a moment")
+			continue
+		}
+
+		u := fmt.Sprintf("%s/chat/%s/%s", base, url.PathEscape(clientID), url.PathEscape(msg))
 
 		resp, err := http.Get(u)
 		if err != nil {
-			log.Printf("send failed: %v", err)
+			logErrorf("send failed: %v", err)
 			continue
 		}
 		resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("server returned %s", resp.Status)
+			logErrorf("server returned %s", resp.Status)
 		}
 	}
+}
+
+func flush(event, data string) {
+	if event == "" && data == "" {
+		return
+	}
+
+	if event == "chat.id" && clientID == "" {
+		clientID = data
+		fmt.Printf("%sconnected as %s%s%s\n", colorGreen, colorBold, clientID, colorReset)
+		fmt.Println("type a message and press enter to send it, ctrl+c to quit")
+		return
+	}
+
+	fmt.Printf("%s[%s]%s %s\n", colorCyan, event, colorReset, data)
+}
+
+func logInfo(msg string) {
+	log.Printf("%s%s%s", colorGray, msg, colorReset)
+}
+
+func logWarn(msg string) {
+	log.Printf("%s%s%s", colorYellow, msg, colorReset)
+}
+
+func logErrorf(format string, args ...any) {
+	log.Printf("%s"+format+"%s", append([]any{colorRed}, append(args, colorReset)...)...)
 }
