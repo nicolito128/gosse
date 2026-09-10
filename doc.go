@@ -1,4 +1,0 @@
-/*
-Package gosse ...
-*/
-package gosse
