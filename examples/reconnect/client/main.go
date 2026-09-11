@@ -72,23 +72,19 @@ func connectAndListen(base, lastEventID string) (newLastEventID string, retryMil
 	var event, data, id string
 	newLastEventID = lastEventID
 
-	flush := func() {
-		if event == "" && data == "" {
-			return
-		}
-		fmt.Printf("[%s] %s (id=%s)\n", event, data, id)
-		if id != "" {
-			newLastEventID = id
-		}
-		event, data = "", ""
-	}
-
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		switch {
 		case line == "":
-			flush()
+			if event == "" && data == "" {
+				return
+			}
+			fmt.Printf("[%s] %s (id=%s)\n", event, data, id)
+			if id != "" {
+				newLastEventID = id
+			}
+			event, data = "", ""
 
 		case strings.HasPrefix(line, "event: "):
 			event = strings.TrimPrefix(line, "event: ")
