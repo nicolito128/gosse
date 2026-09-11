@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"sync"
@@ -10,16 +11,22 @@ import (
 )
 
 var (
+	addr = flag.String("addr", ":8080", "server base address")
+)
+
+var (
 	mu      sync.RWMutex
 	clients = map[string]*gosse.Channel{}
 )
 
 func main() {
+	flag.Parse()
+
 	http.HandleFunc("/events", handleEvents)
 	http.HandleFunc("/echo/{id}/{msg}", handleEcho)
 
-	fmt.Println("Listening on :8080")
-	http.ListenAndServe(":8080", nil)
+	fmt.Println("Listening on", *addr)
+	http.ListenAndServe(*addr, nil)
 }
 
 func handleEvents(w http.ResponseWriter, r *http.Request) {
