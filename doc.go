@@ -34,7 +34,7 @@ then send its bytes through a Channel:
 
 The last argument to NewMessage is the retry delay, in milliseconds, that
 tells the browser how long to wait before reconnecting if the connection
-drops. Passing 0 (or any value <= 0) uses DefaultRetry.
+drops. Passing any value less than 0 uses DefaultRetry.
 
 # Sending vs. writing
 

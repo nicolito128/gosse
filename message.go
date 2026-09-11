@@ -13,15 +13,15 @@ const DefaultRetry = 3000
 
 // Message represents a single Server-Sent Event.
 type Message struct {
-	Data  []byte
 	Event string
+	Data  []byte
 	ID    string
 	Retry int
 }
 
-// NewMessage creates a new Message. If retry <= 0, DefaultRetry is used.
-func NewMessage(data []byte, event string, retry int) *Message {
-	if retry <= 0 {
+// NewMessage creates a new Message. If retry < 0, DefaultRetry is used.
+func NewMessage(event string, data []byte, retry int) *Message {
+	if retry < 0 {
 		retry = DefaultRetry
 	}
 	return &Message{
@@ -49,7 +49,7 @@ func (m *Message) String() string {
 		fmt.Fprintf(&buf, "id: %s\n", m.ID)
 	}
 
-	if m.Retry > 0 {
+	if m.Retry >= 0 {
 		buf.WriteString("retry: ")
 		buf.WriteString(strconv.Itoa(m.Retry))
 		buf.WriteByte('\n')

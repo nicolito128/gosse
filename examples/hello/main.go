@@ -15,7 +15,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request) {
 	c := gosse.Upgrade(w, r)
 	defer c.Close()
 
-	msg := gosse.NewMessage([]byte("hello, goose!"), "greeting", 0)
+	msg := gosse.NewMessage("greeting", []byte("hello, goose!"), 0)
 	c.Send(msg.Bytes())
 
 	<-c.Done()

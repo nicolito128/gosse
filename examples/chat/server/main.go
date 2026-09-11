@@ -38,14 +38,14 @@ func handleEvents(w http.ResponseWriter, r *http.Request) {
 		c.Close()
 	}()
 
-	welcome := gosse.NewMessage([]byte(id), "chat.id", 0)
+	welcome := gosse.NewMessage("chat.id", []byte(id), -1)
 	c.Send(welcome.Bytes())
 
-	broadcast(gosse.NewMessage([]byte(id+" joined"), "chat.join", 0))
+	broadcast(gosse.NewMessage("chat.join", []byte(id+" joined"), -1))
 
 	<-c.Done()
 
-	broadcast(gosse.NewMessage([]byte(id+" left"), "chat.leave", 0))
+	broadcast(gosse.NewMessage("chat.leave", []byte(id+" left"), -1))
 }
 
 func handleChat(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +62,7 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	text := fmt.Sprintf("%s: %s", id, msg)
-	broadcast(gosse.NewMessage([]byte(text), "chat.msg", 0))
+	broadcast(gosse.NewMessage("chat.msg", []byte(text), -1))
 }
 
 func broadcast(m *gosse.Message) {

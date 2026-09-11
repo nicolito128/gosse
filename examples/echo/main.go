@@ -37,7 +37,7 @@ func handleEvents(w http.ResponseWriter, r *http.Request) {
 		c.Close()
 	}()
 
-	mid := gosse.NewMessage([]byte(id), "echo.id", 0)
+	mid := gosse.NewMessage("echo.id", []byte(id), -1)
 	if _, err := c.Send(mid.Bytes()); err != nil {
 		http.Error(w, "failed to send", http.StatusInternalServerError)
 		return
@@ -59,7 +59,7 @@ func handleEcho(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m := gosse.NewMessage([]byte(msg), "echo.msg", 0)
+	m := gosse.NewMessage("echo.msg", []byte(msg), -1)
 	if _, err := c.Send(m.Bytes()); err != nil {
 		http.Error(w, "failed to send", http.StatusInternalServerError)
 	}
