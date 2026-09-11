@@ -7,9 +7,12 @@ import (
 	"strconv"
 )
 
-// DefaultRetry is the reconnection time (in milliseconds) suggested to the
-// client when no explicit retry value is provided.
-const DefaultRetry = 3000
+const (
+	// UnspecifiedRetry indicates that the retry value is not specified and should use the default.
+	UnspecifiedRetry = -1
+	// Default retry reconnection time in milliseconds
+	DefaultRetry = 3000
+)
 
 // Message represents a single Server-Sent Event.
 type Message struct {
